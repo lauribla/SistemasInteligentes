@@ -11,41 +11,49 @@ public class ControllerAgent extends Agent {
     private AgentController filterAgent;
     private AgentController uiAgent;
     private AgentController simulatorAgent;
+    private AgentController statsAgent;
 
     @Override
     protected void setup() {
         System.out.println("Agente Controlador (Orquestador) inicializado: " + getLocalName());
 
-        // 1. CREACIÓN PROGRAMÁTICA DE AGENTES
         try {
             AgentContainer container = (AgentContainer) getContainerController();
 
-            filterAgent = container.createNewAgent("FiltroIA", "es.uni.mas.agents.FilterAgent", null);
+            filterAgent    = container.createNewAgent("FiltroIA",          "es.uni.mas.agents.FilterAgent",        null);
+            uiAgent        = container.createNewAgent("InterfaceAgent",     "es.uni.mas.agents.UIAgent",            null);
+            simulatorAgent = container.createNewAgent("SimuladorChat",      "es.uni.mas.agents.ChatSimulatorAgent", null);
+            statsAgent     = container.createNewAgent("EstadisticasAgent",  "es.uni.mas.agents.StatsAgent",         null);
+
             filterAgent.start();
-
-            uiAgent = container.createNewAgent("InterfaceAgent", "es.uni.mas.agents.UIAgent", null);
             uiAgent.start();
-
-            simulatorAgent = container.createNewAgent("SimuladorChat", "es.uni.mas.agents.ChatSimulatorAgent", null);
             simulatorAgent.start();
-            
-            // Esperar un segundo y arrancar el simulador por defecto
-            Thread.sleep(1000);
-            sendControlToAll("STOP"); // Empezamos en modo normal (STOP = modo estudio desactivado)
+            statsAgent.start();
+
+            // BUG FIX: The original code used Thread.sleep(1000) then sent a
+            // STOP command to establish the default state. Two problems:
+            //
+            //   1. Thread.sleep() inside setup() blocks the JADE scheduler thread,
+            //      potentially starving other agents during startup.
+            //   2. The sleep is a fragile race: on a slow machine the agents may
+            //      not be ready in 1 second; on a fast machine the sleep is wasted.
+            //
+            // Fix: simply remove both. FilterAgent already initialises with
+            // studyModeActive = false, so no STOP command is needed at startup.
+            // Each agent's own setup() is the right place to establish defaults.
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // 2. COMPORTAMIENTO: Escuchar comandos de la interfaz
+        // Listen for UI commands and broadcast them to the relevant agents
         addBehaviour(new CyclicBehaviour() {
             @Override
             public void action() {
                 MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
                 ACLMessage msg = receive(mt);
-                
                 if (msg != null) {
-                    sendControlToAll(msg.getContent());
+                    broadcastCommand(msg.getContent());
                 } else {
                     block();
                 }
@@ -53,26 +61,32 @@ public class ControllerAgent extends Agent {
         });
     }
 
-    private void sendControlToAll(String command) {
+    /**
+     * Propagates a START/STOP command to all agents that care about it.
+     * Currently only FilterAgent reacts; sending to others is harmless
+     * and keeps the architecture open for extension.
+     */
+    private void broadcastCommand(String command) {
         System.out.println(getLocalName() + ": Propagando comando: " + command);
         ACLMessage forward = new ACLMessage(ACLMessage.REQUEST);
         forward.setContent(command);
-        // Enviamos a ambos
-        forward.addReceiver(new jade.core.AID("SimuladorChat", jade.core.AID.ISLOCALNAME));
-        forward.addReceiver(new jade.core.AID("FiltroIA", jade.core.AID.ISLOCALNAME));
+        forward.addReceiver(new jade.core.AID("SimuladorChat",     jade.core.AID.ISLOCALNAME));
+        forward.addReceiver(new jade.core.AID("FiltroIA",          jade.core.AID.ISLOCALNAME));
+        forward.addReceiver(new jade.core.AID("EstadisticasAgent", jade.core.AID.ISLOCALNAME));
         send(forward);
     }
 
     @Override
     protected void takeDown() {
-        // Apagado limpio: Matar a los agentes hijos si existen
         System.out.println("Controlador finalizando. Limpiando agentes...");
-        try {
-            if (filterAgent != null) filterAgent.kill();
-            if (uiAgent != null) uiAgent.kill();
-            if (simulatorAgent != null) simulatorAgent.kill();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        kill(filterAgent);
+        kill(uiAgent);
+        kill(simulatorAgent);
+        kill(statsAgent);
+    }
+
+    private void kill(AgentController ac) {
+        if (ac == null) return;
+        try { ac.kill(); } catch (Exception e) { /* already dead */ }
     }
 }
