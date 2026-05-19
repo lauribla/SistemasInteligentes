@@ -61,7 +61,7 @@ El sistema sigue una arquitectura distribuida compuesta por 5 agentes principale
 - Pulsa **"Activar MODO ESTUDIO"** para iniciar el filtrado. Solo llegarán los mensajes importantes.
 - El banner amarillo aparece cuando el sistema necesita ayuda para aprender (solo con el modo desactivado).
 - Pulsa **"Desactivar MODO ESTUDIO"** para ver los mensajes que fueron retenidos durante la sesión.
-- En cualquier momento, puedes pulsar el botón **"Configurar contactos"* para indicar qué contactos permitir y cuáles bloquear durante el modo Estudio.
+- En cualquier momento, puedes pulsar el botón **"Configurar contactos"** para indicar qué contactos permitir y cuáles bloquear durante el modo Estudio.
 ---
 
 ## 🤖 Declaración de Uso de IA
