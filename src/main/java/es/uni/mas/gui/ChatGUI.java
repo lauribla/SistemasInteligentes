@@ -2,6 +2,7 @@ package es.uni.mas.gui;
 
 import es.uni.mas.agents.UIAgent;
 import es.uni.mas.model.ChatMessage;
+import es.uni.mas.engine.ContactManager;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -9,10 +10,13 @@ import java.awt.event.ActionEvent;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class ChatGUI extends JFrame {
 
     private final UIAgent myAgent;
+    private final ContactManager contactManager;
     private final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
 
     private JTextArea chatArea;
@@ -35,6 +39,7 @@ public class ChatGUI extends JFrame {
 
     public ChatGUI(UIAgent agent) {
         this.myAgent = agent;
+        this.contactManager = ContactManager.getInstance();
         initUI();
     }
 
@@ -66,12 +71,18 @@ public class ChatGUI extends JFrame {
         centerPanel.add(new JScrollPane(chatArea), BorderLayout.CENTER);
         root.add(centerPanel, BorderLayout.CENTER);
 
-        // SOUTH: study mode toggle
-        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        // SOUTH: study mode toggle + contact configuration
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         toggleButton = new JButton("Activar MODO ESTUDIO");
         toggleButton.setBackground(new Color(200, 255, 200));
         toggleButton.addActionListener(this::onToggleStudyMode);
         controlPanel.add(toggleButton);
+        
+        JButton configContactsBtn = new JButton("Configurar Contactos");
+        configContactsBtn.setBackground(new Color(220, 220, 255));
+        configContactsBtn.addActionListener(this::onOpenContactsConfig);
+        controlPanel.add(configContactsBtn);
+        
         root.add(controlPanel, BorderLayout.SOUTH);
 
         add(root);
@@ -227,5 +238,100 @@ public class ChatGUI extends JFrame {
             chatArea.append(text + "\n");
             chatArea.append("──────────────────────────────────────────────────\n");
         });
+    }
+
+    // ── Contact configuration dialog ──────────────────────────────────────────
+
+    private void onOpenContactsConfig(ActionEvent e) {
+        JDialog dialog = new JDialog(this, "Configurar Contactos", true);
+        dialog.setSize(600, 600);
+        dialog.setLocationRelativeTo(this);
+
+        JPanel mainPanel = new JPanel(new BorderLayout(8, 8));
+        mainPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        // Título
+        JLabel titleLabel = new JLabel("Selecciona qué contactos permitir o bloquear durante modo estudio:");
+        titleLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        mainPanel.add(titleLabel, BorderLayout.NORTH);
+
+        // Tabla de contactos
+        Set<String> allContacts = contactManager.getAllKnownContacts();
+        Set<String> whitelist = contactManager.getWhitelist();
+        Set<String> blacklist = contactManager.getBlacklist();
+
+        JPanel listPanel = new JPanel();
+        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+
+        for (String contact : new TreeSet<>(allContacts)) {
+            JPanel contactRow = createContactRow(contact, whitelist.contains(contact), 
+                    blacklist.contains(contact));
+            listPanel.add(contactRow);
+            listPanel.add(Box.createVerticalStrut(6));
+        }
+
+        listPanel.add(Box.createVerticalGlue());
+        JScrollPane scrollPane = new JScrollPane(listPanel);
+        scrollPane.setBorder(BorderFactory.createTitledBorder("Contactos"));
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+
+        // Botones inferiores
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JButton closeBtn = new JButton("Cerrar");
+        closeBtn.addActionListener(e2 -> dialog.dispose());
+        buttonPanel.add(closeBtn);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
+    }
+
+    private JPanel createContactRow(String contact, boolean isWhitelisted, boolean isBlacklisted) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 4));
+        row.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1));
+        row.setBackground(isWhitelisted ? new Color(220, 255, 220) 
+                : (isBlacklisted ? new Color(255, 220, 220) : Color.WHITE));
+
+        JLabel contactLabel = new JLabel(contact);
+        contactLabel.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        contactLabel.setPreferredSize(new Dimension(200, 20));
+        row.add(contactLabel);
+
+        JButton allowBtn = new JButton("Permitir");
+        allowBtn.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        allowBtn.setBackground(new Color(180, 230, 180));
+        allowBtn.setFocusPainted(false);
+        allowBtn.addActionListener(e -> {
+            contactManager.allowContact(contact);
+            row.setBackground(new Color(220, 255, 220));
+        });
+        row.add(allowBtn);
+
+        JButton blockBtn = new JButton("Bloquear");
+        blockBtn.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        blockBtn.setBackground(new Color(230, 180, 180));
+        blockBtn.setFocusPainted(false);
+        blockBtn.addActionListener(e -> {
+            contactManager.blockContact(contact);
+            row.setBackground(new Color(255, 220, 220));
+        });
+        row.add(blockBtn);
+
+        JButton resetBtn = new JButton("Por defecto");
+        resetBtn.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        resetBtn.setBackground(new Color(220, 220, 220));
+        resetBtn.setFocusPainted(false);
+        resetBtn.addActionListener(e -> {
+            contactManager.resetContact(contact);
+            row.setBackground(Color.WHITE);
+        });
+        row.add(resetBtn);
+
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+        return row;
+    }
+
+    public ContactManager getContactManager() {
+        return contactManager;
     }
 }

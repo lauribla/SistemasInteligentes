@@ -18,7 +18,7 @@ El sistema se basa en un **Motor de Reglas Experto** alimentado por una base de 
 El sistema sigue una arquitectura distribuida compuesta por 5 agentes principales coordinados bajo el estándar FIPA:
 
 1.  **`ControllerAgent` (Orquestador):** El punto de entrada del sistema. Crea programáticamente a los demás agentes, gestiona el estado global (Modo Estudio ON/OFF) y asegura un apagado limpio (patrón Killer).
-2.  **`FilterAgent` (Motor de IA):** El núcleo inteligente. Implementado mediante una **Máquina de Estados Finitos (FSMBehaviour)** de 6 estados, combina el motor de reglas y el clasificador Naive Bayes para tomar decisiones de filtrado. Durante el Modo Estudio almacena en buffer los mensajes descartados para mostrarlos al desactivar el modo.
+2.  **`FilterAgent` (Motor de IA):** El núcleo inteligente. Implementado mediante una **Máquina de Estados Finitos (FSMBehaviour)** de 6 estados, combina el motor de reglas, el clasificador Naive Bayes y el gestor de contactos para tomar decisiones de filtrado. Durante el Modo Estudio almacena en buffer los mensajes descartados para mostrarlos al desactivar el modo.
 3.  **`ChatSimulatorAgent` (Percepción):** Simula el entorno externo. Genera tráfico de mensajes periódicamente mediante la creación de **agentes efímeros** (`MessageFetcherAgent`), aislando la lógica de adquisición.
 4.  **`UIAgent` (Interfaz):** Actúa como puente entre la plataforma JADE y la interfaz gráfica **Swing**, permitiendo al usuario visualizar mensajes filtrados, estadísticas en tiempo real y el banner de aprendizaje activo.
 5.  **`StatsAgent` (Monitorización):** Agente pasivo que recibe eventos de filtrado durante el Modo Estudio, acumula estadísticas por mensaje y remitente, y las envía periódicamente a la interfaz.
@@ -38,10 +38,10 @@ El sistema sigue una arquitectura distribuida compuesta por 5 agentes principale
 *   **Clasificador Naive Bayes:** Para generalizar más allá de las reglas explícitas, el sistema incluye un clasificador Naive Bayes entrenado automáticamente a partir de las keywords del XML. Actúa como desempate en casos borderline y aprende en tiempo real de la retroalimentación del usuario.
 *   **Aprendizaje Activo:** Cuando el sistema no tiene confianza en un mensaje (fuera del Modo Estudio), muestra un banner con cuenta atrás de 8 segundos. La respuesta del usuario amplía el vocabulario del clasificador para sesiones futuras, sin interrumpir el estudio.
 *   **FSMBehaviour:** El uso de una máquina de estados en el filtrado asegura una gestión eficiente de los hilos de ejecución y una lógica de estados (Espera → Análisis → Decisión → Aprendizaje) clara y profesional. Se usa `block()` en lugar de `blockingReceive()` para no bloquear el hilo del agente mientras se espera respuesta del usuario.
+*   **Gestión de Contactos:** Sistema de lista blanca/negra persistente que permite al usuario configurar automáticamente qué contactos siempre se permiten y cuáles se bloquean. La configuración se guarda en `contacts-config.json` para que persista entre diferentes ejecuciones.
 *   **Entorno Reproducible (Maven):** El proyecto usa Maven para gestionar la dependencia de JADE de forma local, asegurando que cualquier evaluador pueda ejecutar el código con un solo clic.
 
 ---
-
 ## 🚀 Guía de Ejecución
 
 ### Requisitos Previos
@@ -61,7 +61,7 @@ El sistema sigue una arquitectura distribuida compuesta por 5 agentes principale
 - Pulsa **"Activar MODO ESTUDIO"** para iniciar el filtrado. Solo llegarán los mensajes importantes.
 - El banner amarillo aparece cuando el sistema necesita ayuda para aprender (solo con el modo desactivado).
 - Pulsa **"Desactivar MODO ESTUDIO"** para ver los mensajes que fueron retenidos durante la sesión.
-
+- En cualquier momento, puedes pulsar el botón **"Configurar contactos"* para indicar qué contactos permitir y cuáles bloquear durante el modo Estudio.
 ---
 
 ## 🤖 Declaración de Uso de IA
@@ -77,6 +77,6 @@ De acuerdo con los requisitos de la asignatura, se declara que se ha utilizado I
 
 ---
 
-**Autor:** Mª Laura Hernández Hernández, Miguel Hurtado Rojas, Víctor Pérez García, Jonás Rodríguez Unanyan, Adrián Zazo Rubio  
+**Autores:** Mª Laura Hernández Hernández, Miguel Hurtado Rojas, Víctor Pérez García, Jonás Rodríguez Unanyan, Adrián Zazo Rubio  
 **Asignatura:** Sistemas Inteligentes  
 **Universidad:** Universidad Politécnica de Madrid

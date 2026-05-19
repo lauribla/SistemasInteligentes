@@ -1,6 +1,7 @@
 package es.uni.mas.agents;
 
 import es.uni.mas.engine.RulesEngine;
+import es.uni.mas.engine.ContactManager;
 import es.uni.mas.model.ChatMessage;
 import es.uni.mas.model.FilterEvent;
 import jade.core.Agent;
@@ -22,6 +23,7 @@ import java.util.List;
 public class FilterAgent extends Agent {
 
     private RulesEngine       engine;
+    private ContactManager    contactManager;
     private ACLMessage        currentMsg;
     private ChatMessage       chatMsg;
     private int               lastScore             = 0;
@@ -45,6 +47,7 @@ public class FilterAgent extends Agent {
     protected void setup() {
         System.out.println("Agente Filtro inicializado: " + getLocalName());
         engine = new RulesEngine("rules.xml");
+        contactManager = ContactManager.getInstance();
         registerInDF();
 
         // ── Behaviour 1: START / STOP commands ───────────────────────────────
@@ -98,9 +101,14 @@ public class FilterAgent extends Agent {
 
         // ── ANALYZING ─────────────────────────────────────────────────────────
         //
+        // Contact check (during study mode):
+        //   - WHITELIST → allow
+        //   - BLACKLIST → block
+        //   - DEFAULT → apply rules
+        //
         // Study mode ON — three outcomes:
-        //   0 → DISCARDING  (clearly distraction, or borderline with no NB opinion)
-        //   1 → FORWARDING  (clearly important, or NB confirms borderline as important)
+        //   0 → DISCARDING  (clearly distraction, borderline with no NB opinion or contact in blacklist)
+        //   1 → FORWARDING  (clearly important, NB confirms borderline as important or contact in whitelist)
         //
         // Study mode OFF — two outcomes:
         //   1 → FORWARDING      (message passes through normally)
@@ -114,20 +122,37 @@ public class FilterAgent extends Agent {
 
             @Override
             public void action() {
-                lastScore = engine.calculateScore(chatMsg);
-
+                String sender = chatMsg.getSender();
+                
                 if (!studyModeActive) {
                     // Study mode OFF: everything passes, but trigger the banner
                     // for borderline-uncertain messages so the system can learn.
+                    lastScore = engine.calculateScore(chatMsg);
                     boolean borderline = lastScore >= 0 && lastScore < engine.getThreshold();
                     boolean uncertain  = engine.isUncertain(chatMsg);
                     result = (borderline && uncertain) ? 3 : 1;
                     return;
                 }
 
-                // Study mode ON: filter strictly, no banner
-                System.out.println(getLocalName() + ": [" + chatMsg.getSender()
-                        + "] score=" + lastScore + " umbral=" + engine.getThreshold());
+                // Study mode ON: check contact list first, then apply rules                
+                ContactManager.ContactStatus status = contactManager.checkContact(sender);
+                
+                if (status == ContactManager.ContactStatus.ALLOW) {
+                    System.out.println(getLocalName() + ": [" + sender + "] en WHITELIST → PERMITIR");
+                    result = 1; 
+                    return;
+                }
+                
+                if (status == ContactManager.ContactStatus.BLOCK) {
+                    System.out.println(getLocalName() + ": [" + sender + "] en BLACKLIST → BLOQUEAR");
+                    result = 0;
+                    return;
+                }
+
+                // DEFAULT: apply rules as normal
+                lastScore = engine.calculateScore(chatMsg);
+                System.out.println(getLocalName() + ": [" + sender
+                        + "] usando REGLAS: score=" + lastScore + " umbral=" + engine.getThreshold());
 
                 if (lastScore >= engine.getThreshold()) {
                     result = 1;                                              // rules: important

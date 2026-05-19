@@ -12,3 +12,6 @@ out/
 # JADE Logs/Temp
 MTPs-*.txt
 APDescription.txt
+
+# Configuración de contactos
+contacts-config.json

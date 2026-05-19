@@ -55,6 +55,9 @@ public class MessageFetcherAgent extends Agent {
             {"AmigoCercano", "A las 21:00 echan el partido, ¿dónde lo vemos?"},
             {"AmigoCercano", "Me he quedado dormido, si pasan lista decid que estoy en el médico"},
             {"AmigoCercano", "Al final lo de la barbacoa del sábado sigue en pie, ¿no?"},
+            {"AmigoCercano", "¿Os apuntáis a la quedada de Erasmus para ir a la playa este finde?"},
+            {"AmigoCercano", "¿Alguien tiene el PDF del libro de texto de IA? Es que el mío se ha perdido"},
+            {"AmigoCercano", "Estoy en la cafetería, si os aburrís de estudiar venid un rato"},
 
             // === GRUPO DE LA UNIVERSIDAD - GENERAL (Mezcla / Ruido) ===
             {"GrupoUni", "Cervezas en el bar de abajo al acabar"},
@@ -84,6 +87,10 @@ public class MessageFetcherAgent extends Agent {
             {"GrupoFamilia", "Dice tu padre que si puedes mirar qué le pasa al router que no va"},
             {"GrupoFamilia", "¿Necesitas que te acerquemos el táper de comida para la semana?"},
             {"GrupoFamilia", "No te olvides de llamar a la abuela que hace mucho que no hablas con ella"},
+            {"GrupoFamilia", "¿Puedes pasar a recoger el traje de la tintorería esta semana?"},
+            {"GrupoFamilia", "¿Quién se ha comido el último yogur de la nevera?"},
+            {"GrupoFamilia", "¿Puedes sacar a pasear al perro esta tarde?"},
+            {"GrupoFamilia", "Tu madre ha hecho tu postre favorito para cuando vengas a casa"},
 
             // === SPAM Y DESCONOCIDOS (Filtro negativo estricto) ===
             {"Desconocido", "Venta de criptomonedas garantizada"},
@@ -96,6 +103,11 @@ public class MessageFetcherAgent extends Agent {
             {"Desconocido", "Enhorabuena, tu número ha sido seleccionado para un sorteo de un iPhone"},
             {"Desconocido", "Préstamos rápidos sin aval en menos de 24 horas"},
             {"Desconocido", "Urgente: Tu cuenta bancaria ha sido bloqueada temporalmente"},
+            {"Desconocido", "¿Quieres mejorar tu rendimiento académico? Prueba nuestro curso online"},
+            {"Desconocido", "Gana seguidores en Instagram con nuestro servicio de promoción"},
+            {"Desconocido", "¿Cansado de estudiar? Descubre las mejores ofertas en videojuegos"},
+            {"Desconocido", "Consigue una cita con tu crush gracias a nuestra app de ligue"},
+            {"Desconocido", "¿Quieres ser influencer? Te ayudamos a monetizar tus redes sociales"},
 
 //            // === NOTIFICACIONES DE APPS / SERVICIOS (Ocio / Ruido) ===
 //            {"Notificaciones_App", "[Spotify] Tu resumen del año ya está disponible. ¡Descúbrelo!"},
@@ -139,7 +151,15 @@ public class MessageFetcherAgent extends Agent {
             {"GrupoUni", "Menudo examen ha puesto el de redes, ha ido a pillar al 100%"},
             {"GrupoFamilia", "Feliz domingo, que pases un buen día de estudio"},
             {"Desconocido", "Sorteo express de una cena para dos personas, haz clic"},
-            {"Notificaciones_App", "[Gmail] Confirmación de matrícula para el próximo curso académico"}
+            {"Notificaciones_App", "[Gmail] Confirmación de matrícula para el próximo curso académico"},
+            {"Profesor_Avisos", "Subida la grabación de la clase de hoy en el campus virtual"},
+            {"Compañero_Clase", "¿Alguien ha entendido algo del tema 5? Porque yo no tengo ni idea"},
+            {"Grupo_Trabajo_IA", "Necesitamos decidir qué framework de IA usar para el proyecto"},
+            {"AmigoCercano", "He visto un documental sobre IA que te encantaría, te paso el enlace"},
+            {"GrupoUni", "¿Alguien se apunta a hacer un grupo de estudio para el examen de sistemas?"},
+            {"GrupoFamilia", "Tu padre ha hecho una tarta de manzana, está buenísima, pásate por casa a probarla"},
+            {"Desconocido", "¿Quieres aprender a programar? Únete a nuestro curso online gratuito"},
+            {"Notificaciones_App", "[Spotify] Nueva playlist personalizada basada en tu actividad reciente"}
     };
 
     @Override

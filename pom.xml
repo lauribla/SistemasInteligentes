@@ -30,6 +30,13 @@
             <artifactId>jdom2</artifactId>
             <version>2.0.6.1</version>
         </dependency>
+        
+        <!-- JSON para gestionar configuración -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20240303</version>
+        </dependency>
     </dependencies>
 
     <build>

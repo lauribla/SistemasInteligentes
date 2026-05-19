@@ -6,15 +6,23 @@
     <rule type="sender" value="GrupoUni" weight="-5" description="Grupo ruidoso de la uni"/>
     <rule type="sender" value="GrupoFamilia" weight="-3" description="Stickers y memes de familia"/>
     <rule type="sender" value="AmigoCercano" weight="+8" description="Mensajes directos importantes"/>
-    <rule type="sender" value="Profesor" weight="+15" description="Avisos del profesor"/>
+    <rule type="sender" value="Profesor_Avisos" weight="+15" description="Avisos del profesor"/>
+    <rule type="sender" value="Notificaciones_App" weight="-10" description="Notificaciones de apps"/>
+    <rule type="sender" value="Desconocido" weight="-20" description="Spam y mensajes no identificados"/>
 
     <!-- REGLAS POR PALABRA CLAVE -->
-    <rule type="keyword" value="quedada" weight="+15" description="Planes sociales/estudio"/>
+    <rule type="keyword" value="quedada" weight="-3" description="Planes sociales/estudio"/>
     <rule type="keyword" value="urgente" weight="+12" description="Prioridad inmediata"/>
     <rule type="keyword" value="examen" weight="+10" description="Contenido académico"/>
     <rule type="keyword" value="sticker" weight="-8" description="Multimedia irrelevante"/>
     <rule type="keyword" value="jajaja" weight="-5" description="Risas sin contenido"/>
     <rule type="keyword" value="cerveza" weight="+5" description="Ocio"/>
     <rule type="keyword" value="practica" weight="+10" description="Trabajo de la uni"/>
+    <rule type="keyword" value="sorteo" weight="-15" description="Spam de promociones"/>
+    <rule type="keyword" value="clase" weight="+10" description="Información académica"/>
+    <rule type="keyword" value="proyecto" weight="+10" description="Trabajo en grupo"/>
+    <rule type="keyword" value="fiesta" weight="-10" description="Distracciones sociales"/>
+    <rule type="keyword" value="revisión" weight="+10" description="Revisión de exámenes"/>
+    <rule type="keyword" value="PDF" weight="+8" description="Material de estudio"/>
 
 </filter-rules>
