@@ -62,7 +62,7 @@ public class FilterAgent extends Agent {
                 ACLMessage msg = receive(mt);
                 if (msg != null) {
                     boolean wasActive = studyModeActive;
-                    studyModeActive = msg.getContent().equalsIgnoreCase("START");
+                    studyModeActive = msg.getContent().startsWith("START");
                     System.out.println(getLocalName() + ": Modo estudio → " + studyModeActive);
 
                     // Turning study mode OFF → show the user everything that was held back

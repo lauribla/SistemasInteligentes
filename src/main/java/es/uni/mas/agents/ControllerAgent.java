@@ -74,6 +74,34 @@ public class ControllerAgent extends Agent {
         forward.addReceiver(new jade.core.AID("FiltroIA",          jade.core.AID.ISLOCALNAME));
         forward.addReceiver(new jade.core.AID("EstadisticasAgent", jade.core.AID.ISLOCALNAME));
         send(forward);
+
+        if (command.startsWith("START:")) {
+            try {
+                int minutes = Integer.parseInt(command.substring(6)); // después de "START:"
+                if (minutes > 0) {
+                    long timeoutMillis = minutes * 60L * 1000L;
+
+                    System.out.println("⏱ Programando desactivación automática en " + minutes + " minutos");
+
+                    addBehaviour(new jade.core.behaviours.WakerBehaviour(this, timeoutMillis) {
+                        @Override
+                        protected void handleElapsedTimeout() {
+                            System.out.println("Temporizador finalizado > Desactivando Modo Estudio automáticamente");
+
+                            broadcastCommand("STOP");
+
+                            ACLMessage notify = new ACLMessage(ACLMessage.INFORM);
+                            notify.setOntology("study-timer-ended");
+                            notify.setContent("El Modo Estudio ha finalizado automáticamente.");
+                            notify.addReceiver(new jade.core.AID("InterfaceAgent", jade.core.AID.ISLOCALNAME));
+                            send(notify);
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                System.err.println("Error al programar temporizador: " + e.getMessage());
+            }
+        }
     }
 
     @Override

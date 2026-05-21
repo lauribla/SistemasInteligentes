@@ -35,6 +35,9 @@ public class ChatGUI extends JFrame {
     private static final int TIMER_INTERVAL = 80;   // 100 × 80 ms = 8 000 ms
     private int remainingTicks;
 
+    private Timer studyModeTimer;
+    private JLabel timerLabel;
+    private int studyMinutesRemaining = 0;
     // ─────────────────────────────────────────────────────────────────────────
 
     public ChatGUI(UIAgent agent) {
@@ -218,18 +221,68 @@ public class ChatGUI extends JFrame {
     // ── Study mode toggle ─────────────────────────────────────────────────────
 
     private void onToggleStudyMode(ActionEvent e) {
-        studyModeOn = !studyModeOn;
-        if (studyModeOn) {
-            toggleButton.setText("Desactivar MODO ESTUDIO");
-            toggleButton.setBackground(new Color(255, 200, 200));
-            myAgent.sendControlCommand("START");
-            addSystemMessage("SISTEMA: Modo Estudio ACTIVADO. Filtrando distracciones...");
+        if (!studyModeOn) {
+            // === ACTIVANDO MODO ESTUDIO ===
+            Object[] options = {"Hasta que lo desactive", "Por tiempo limitado"};
+            int choice = JOptionPane.showOptionDialog(this,
+                    "¿Cómo quieres activar el Modo Estudio?",
+                    "Activar Modo Estudio",
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null, options, options[0]);
+
+            if (choice == 0) {
+                // Modo indefinido (sin temporizador)
+                activateStudyMode(0);
+            } else if (choice == 1) {
+                String input = JOptionPane.showInputDialog(this,
+                        "Duración del Modo Estudio (en minutos):",
+                        "Tiempo limitado",
+                        JOptionPane.PLAIN_MESSAGE);
+
+                if (input == null) return; // Cancelado
+
+                try {
+                    int minutes = Integer.parseInt(input.trim());
+                    if (minutes < 1) {
+                        JOptionPane.showMessageDialog(this, "El tiempo debe ser al menos 1 minuto.");
+                        return;
+                    }
+                    activateStudyMode(minutes);
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Por favor introduce un número válido.");
+                }
+            }
         } else {
-            toggleButton.setText("Activar MODO ESTUDIO");
-            toggleButton.setBackground(new Color(200, 255, 200));
-            myAgent.sendControlCommand("STOP");
-            addSystemMessage("SISTEMA: Modo Estudio DESACTIVADO. Mostrando mensajes retenidos...");
+            // === DESACTIVANDO MODO ESTUDIO ===
+            deactivateStudyMode();
         }
+    }
+
+    private void activateStudyMode(int minutes) {
+        studyModeOn = true;
+        toggleButton.setText(minutes > 0 ? "Desactivar MODO ESTUDIO" : "Desactivar MODO ESTUDIO");
+        toggleButton.setBackground(new Color(255, 200, 200));
+
+        String command = minutes > 0 ? "START:" + minutes : "START";
+        myAgent.sendControlCommand(command);
+
+        addSystemMessage("SISTEMA: Modo Estudio ACTIVADO" +
+                (minutes > 0 ? " por " + minutes + " minutos." : " (indefinido)."));
+
+        if (minutes > 0) {
+            startStudyModeCountdown(minutes*60);
+        }
+    }
+
+    private void deactivateStudyMode() {
+        studyModeOn = false;
+        toggleButton.setText("Activar MODO ESTUDIO");
+        toggleButton.setBackground(new Color(200, 255, 200));
+        myAgent.sendControlCommand("STOP");
+
+        stopStudyModeCountdown();
+        addSystemMessage("SISTEMA: Modo Estudio DESACTIVADO. Mostrando mensajes retenidos...");
     }
 
     private void addSystemMessage(String text) {
@@ -329,6 +382,67 @@ public class ChatGUI extends JFrame {
 
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
         return row;
+    }
+
+    private void startStudyModeCountdown(int minutes) {
+        studyMinutesRemaining = minutes;
+        stopStudyModeCountdown(); // Limpiar anterior si existía
+
+        // Crear etiqueta
+        timerLabel = new JLabel(" ⏱ " + formatTime(minutes));
+        timerLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+        timerLabel.setForeground(new Color(220, 50, 50));
+
+        // Añadir al panel de controles
+        JPanel controlPanel = (JPanel) toggleButton.getParent();
+        controlPanel.add(timerLabel);
+        controlPanel.revalidate();
+        controlPanel.repaint();
+
+        // Timer cada segundo (más fluido)
+        studyModeTimer = new Timer(1000, e -> {
+            studyMinutesRemaining--;
+
+            if (studyMinutesRemaining <= 0) {
+                stopStudyModeCountdown();
+                if (studyModeOn) {
+                    deactivateStudyMode();
+                }
+            } else {
+                timerLabel.setText(" ⏱ " + formatTime(studyMinutesRemaining));
+            }
+        });
+
+        studyModeTimer.start();
+    }
+
+    private String formatTime(int totalMinutes) {
+        int hours = totalMinutes /3600;
+        int aux = totalMinutes % 3600;
+        int minutes = aux / 60;
+        int seconds = aux % 60;
+        if (hours > 0) {
+            return String.format("%d:%02d:%02d", hours, minutes, seconds);
+        } else {
+            return String.format("%d:%02d", minutes, seconds);
+        }
+    }
+
+    private void stopStudyModeCountdown() {
+        if (studyModeTimer != null) {
+            studyModeTimer.stop();
+            studyModeTimer = null;
+        }
+
+        if (timerLabel != null) {
+            JPanel controlPanel = (JPanel) toggleButton.getParent();
+            if (controlPanel != null) {
+                controlPanel.remove(timerLabel);
+                controlPanel.revalidate();
+                controlPanel.repaint();
+            }
+            timerLabel = null;
+        }
     }
 
     public ContactManager getContactManager() {
