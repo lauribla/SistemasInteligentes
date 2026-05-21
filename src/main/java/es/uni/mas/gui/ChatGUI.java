@@ -223,7 +223,7 @@ public class ChatGUI extends JFrame {
     private void onToggleStudyMode(ActionEvent e) {
         if (!studyModeOn) {
             // === ACTIVANDO MODO ESTUDIO ===
-            Object[] options = {"Hasta que lo desactive", "Por tiempo limitado"};
+            Object[] options = {"Hasta que lo desactive", "Por tiempo limitado", "Pomodoro 25/5"};
             int choice = JOptionPane.showOptionDialog(this,
                     "¿Cómo quieres activar el Modo Estudio?",
                     "Activar Modo Estudio",
@@ -252,7 +252,9 @@ public class ChatGUI extends JFrame {
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(this, "Por favor introduce un número válido.");
                 }
-            }
+            } else if (choice == 2) {
+            activatePomodoroMode();
+        }
         } else {
             // === DESACTIVANDO MODO ESTUDIO ===
             deactivateStudyMode();
@@ -389,7 +391,7 @@ public class ChatGUI extends JFrame {
         stopStudyModeCountdown(); // Limpiar anterior si existía
 
         // Crear etiqueta
-        timerLabel = new JLabel(" ⏱ " + formatTime(minutes));
+        timerLabel = new JLabel(formatTime(minutes));
         timerLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
         timerLabel.setForeground(new Color(220, 50, 50));
 
@@ -409,7 +411,7 @@ public class ChatGUI extends JFrame {
                     deactivateStudyMode();
                 }
             } else {
-                timerLabel.setText(" ⏱ " + formatTime(studyMinutesRemaining));
+                timerLabel.setText( formatTime(studyMinutesRemaining));
             }
         });
 
@@ -443,6 +445,67 @@ public class ChatGUI extends JFrame {
             }
             timerLabel = null;
         }
+    }
+
+    private void activatePomodoroMode() {
+        studyModeOn = true;
+        toggleButton.setText("Desactivar Pomodoro");
+        toggleButton.setBackground(new Color(255, 180, 180));
+
+        myAgent.sendControlCommand("START:POMODORO");
+
+        addSystemMessage("POMODORO ACTIVADO\n" +
+                "25 minutos de estudio + 5 minutos de descanso");
+
+        startPomodoroCycle();
+    }
+
+    private void startPomodoroCycle() {
+        stopStudyModeCountdown();
+
+        timerLabel = new JLabel("ESTUDIO");
+        timerLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+        timerLabel.setForeground(new Color(220, 50, 50));
+
+        JPanel controlPanel = (JPanel) toggleButton.getParent();
+        controlPanel.add(timerLabel);
+        controlPanel.revalidate();
+        controlPanel.repaint();
+
+        startCountdown(25 *60, true);
+    }
+
+    private void startCountdown(int seconds, boolean isStudyPhase) {
+        studyMinutesRemaining = seconds;
+
+        studyModeTimer = new Timer(1000, e -> {
+            studyMinutesRemaining--;
+
+            if (studyMinutesRemaining <= 0) {
+                stopStudyModeCountdown();
+
+                if (isStudyPhase) {
+                    addSystemMessage("¡Tiempo de descanso! (5 minutos)");
+                    timerLabel = new JLabel("DESCANSO");
+                    timerLabel.setForeground(new Color(50, 150, 50));
+                    JPanel cp = (JPanel) toggleButton.getParent();
+                    cp.add(timerLabel);
+                    cp.revalidate();
+
+                    startCountdown(5 *60, false);
+                    myAgent.sendControlCommand("STOP");
+                } else {
+                    myAgent.sendControlCommand("START");
+                    addSystemMessage("¡Descanso terminado! Volviendo a modo estudio...");
+                    startPomodoroCycle();
+                }
+            } else {
+                String phase = isStudyPhase ? "ESTUDIO" : "DESCANSO";
+                timerLabel.setText(" " + phase + " - " + formatTime(studyMinutesRemaining));
+            }
+        });
+
+        studyModeTimer.start();
     }
 
     public ContactManager getContactManager() {

@@ -81,7 +81,7 @@ public class ControllerAgent extends Agent {
                 if (minutes > 0) {
                     long timeoutMillis = minutes * 60L * 1000L;
 
-                    System.out.println("⏱ Programando desactivación automática en " + minutes + " minutos");
+                    System.out.println("Programando desactivación automática en " + minutes + " minutos");
 
                     addBehaviour(new jade.core.behaviours.WakerBehaviour(this, timeoutMillis) {
                         @Override
