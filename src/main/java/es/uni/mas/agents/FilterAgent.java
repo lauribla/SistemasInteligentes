@@ -33,6 +33,10 @@ public class FilterAgent extends Agent {
     // Messages discarded during study mode, flushed to UI when mode turns off
     private final List<ChatMessage> discardedBuffer = new ArrayList<>();
 
+    // True while the classify banner is open — incoming messages are forwarded
+    // directly during this window instead of triggering a second popup.
+    private boolean awaitingClassify = false;
+
     // Safety-net timeout: slightly longer than the GUI timer (8 s)
     private static final long CLASSIFY_TIMEOUT_MS = 9_000;
 
@@ -41,7 +45,6 @@ public class FilterAgent extends Agent {
     private static final String FORWARDING       = "FORWARDING";
     private static final String DISCARDING       = "DISCARDING";
     private static final String FORWARD_AND_ASK  = "FORWARD_AND_ASK";
-    private static final String AWAITING_USER    = "AWAITING_USER";
 
     @Override
     protected void setup() {
@@ -81,7 +84,13 @@ public class FilterAgent extends Agent {
 
             @Override
             public void action() {
-                MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+                // Exclude any INFORM messages that carry a known ontology tag —
+                // those belong to other behaviours (classify-response, stats-update…)
+                // and must NOT be consumed here or chatMsg will end up null.
+                MessageTemplate mt = MessageTemplate.and(
+                        MessageTemplate.MatchPerformative(ACLMessage.INFORM),
+                        MessageTemplate.not(MessageTemplate.MatchOntology("classify-response"))
+                );
                 currentMsg = myAgent.receive(mt);
                 if (currentMsg != null) {
                     try {
@@ -122,27 +131,33 @@ public class FilterAgent extends Agent {
 
             @Override
             public void action() {
+                // Safety net: chatMsg should never be null here, but guard anyway
+                // so a deserialization failure in WAITING just silently drops the
+                // malformed message instead of crashing the agent.
+                if (chatMsg == null) { result = -1; return; }
+
                 String sender = chatMsg.getSender();
-                
+
                 if (!studyModeActive) {
                     // Study mode OFF: everything passes, but trigger the banner
-                    // for borderline-uncertain messages so the system can learn.
+                    // for borderline-uncertain messages so the system can learn —
+                    // UNLESS the banner is already open, in which case just forward.
                     lastScore = engine.calculateScore(chatMsg);
                     boolean borderline = lastScore >= 0 && lastScore < engine.getThreshold();
                     boolean uncertain  = engine.isUncertain(chatMsg);
-                    result = (borderline && uncertain) ? 3 : 1;
+                    result = (borderline && uncertain && !awaitingClassify) ? 3 : 1;
                     return;
                 }
 
                 // Study mode ON: check contact list first, then apply rules                
                 ContactManager.ContactStatus status = contactManager.checkContact(sender);
-                
+
                 if (status == ContactManager.ContactStatus.ALLOW) {
                     System.out.println(getLocalName() + ": [" + sender + "] en WHITELIST → PERMITIR");
-                    result = 1; 
+                    result = 1;
                     return;
                 }
-                
+
                 if (status == ContactManager.ContactStatus.BLOCK) {
                     System.out.println(getLocalName() + ": [" + sender + "] en BLACKLIST → BLOQUEAR");
                     result = 0;
@@ -196,27 +211,44 @@ public class FilterAgent extends Agent {
         // Only entered when study mode is OFF and the message is borderline-uncertain.
         // Forwards the message to the chat immediately, then fires the classify
         // banner so the user can optionally teach the system.
-        // After this, AWAITING_USER takes over to wait for the answer.
+        // Sets awaitingClassify=true so the FSM can keep processing new messages
+        // while the popup is open; the parallel ClassifyResponseBehaviour resets it.
         fsm.registerState(new OneShotBehaviour() {
             @Override
             public void action() {
                 System.out.println(getLocalName() + ": [FORWARD+ASK] Reenviando y preguntando...");
                 forwardToUI(null);          // message appears in chat right away
+                awaitingClassify = true;    // block further popups until answered/timeout
                 sendClassifyRequest();      // banner appears alongside it
             }
         }, FORWARD_AND_ASK);
 
-        // ── AWAITING_USER ─────────────────────────────────────────────────────
-        // Waits for the user's banner response. The message is already in the chat
-        // so there is nothing to forward here regardless of the outcome — we only
-        // learn from the answer and return to WAITING.
-        fsm.registerState(new SimpleBehaviour(this) {
-            private boolean done      = false;
-            private long    waitStart = 0L;
-            private int     result;
+        // ── Transitions ───────────────────────────────────────────────────────
+        fsm.registerDefaultTransition(WAITING,         ANALYZING,       new String[]{WAITING, ANALYZING});
+        fsm.registerTransition(      ANALYZING,        FORWARDING,      1);
+        fsm.registerTransition(      ANALYZING,        DISCARDING,      0);
+        fsm.registerTransition(      ANALYZING,        FORWARD_AND_ASK, 3);
+        fsm.registerTransition(      ANALYZING,        WAITING,        -1, new String[]{WAITING, ANALYZING}); // null/bad message → skip
+        fsm.registerDefaultTransition(FORWARD_AND_ASK, WAITING);   // back immediately; ClassifyResponseBehaviour handles the reply
+        fsm.registerDefaultTransition(FORWARDING,      WAITING);
+        fsm.registerDefaultTransition(DISCARDING,      WAITING);
+
+        addBehaviour(fsm);
+
+        // ── Behaviour 3: classify-response (parallel, never blocks the FSM) ──
+        // Runs independently of the FSM so incoming messages keep flowing while
+        // the popup is open. Resets awaitingClassify when the user answers or
+        // the safety-net timeout fires.
+        addBehaviour(new SimpleBehaviour(this) {
+            private long waitStart = 0L;
 
             @Override
             public void action() {
+                if (!awaitingClassify) {
+                    block(200);   // nothing pending — sleep cheaply
+                    return;
+                }
+
                 if (waitStart == 0L) waitStart = System.currentTimeMillis();
 
                 MessageTemplate mt = MessageTemplate.and(
@@ -235,32 +267,20 @@ public class FilterAgent extends Agent {
                     } else if ("NO".equals(answer)) {
                         engine.addLearnedExample(engine.extractWords(chatMsg.getText()), false);
                     }
-                    // TIMEOUT: message already shown, nothing to learn
-                    done = true;
+                    awaitingClassify = false;
+                    waitStart = 0L;
 
                 } else if (System.currentTimeMillis() - waitStart > CLASSIFY_TIMEOUT_MS) {
-                    System.out.println(getLocalName() + ": [AWAITING_USER] Timeout de seguridad.");
-                    done = true;
+                    System.out.println(getLocalName() + ": [CLASSIFY] Timeout de seguridad.");
+                    awaitingClassify = false;
+                    waitStart = 0L;
                 } else {
                     block(200);
                 }
             }
 
-            @Override public boolean done() { return done; }
-            @Override public int onEnd() { waitStart = 0L; done = false; return 0; }
-        }, AWAITING_USER);
-
-        // ── Transitions ───────────────────────────────────────────────────────
-        fsm.registerDefaultTransition(WAITING,         ANALYZING,       new String[]{WAITING, ANALYZING});
-        fsm.registerTransition(      ANALYZING,        FORWARDING,      1);
-        fsm.registerTransition(      ANALYZING,        DISCARDING,      0);
-        fsm.registerTransition(      ANALYZING,        FORWARD_AND_ASK, 3);
-        fsm.registerDefaultTransition(FORWARD_AND_ASK, AWAITING_USER);
-        fsm.registerDefaultTransition(AWAITING_USER,   WAITING);
-        fsm.registerDefaultTransition(FORWARDING,      WAITING);
-        fsm.registerDefaultTransition(DISCARDING,      WAITING);
-
-        addBehaviour(fsm);
+            @Override public boolean done() { return false; }  // runs for agent lifetime
+        });
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
