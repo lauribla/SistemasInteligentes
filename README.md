@@ -1,8 +1,8 @@
 # EstudioGuard: Sistema Multi-Agente de Filtrado de Chats
 
+**[Enlace a la presentación](https://docs.google.com/presentation/d/1f-lpAHfSep0GDOSHzBrEc_pD0JfadFtAB0PhZXJVI2E/edit?usp=sharing)**  
 **Práctica de Sistemas Inteligentes**  
 **Implementación con JADE (Java Agent DEvelopment Framework)**
-
 ---
 
 ## 📝 Descripción del Proyecto
