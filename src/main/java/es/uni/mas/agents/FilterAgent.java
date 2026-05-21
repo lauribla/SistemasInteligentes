@@ -285,11 +285,33 @@ public class FilterAgent extends Agent {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /** Sends all buffered discarded messages to UIAgent in one batch, then clears the buffer. */
+    /** Sends all buffered discarded messages to UIAgent in one batch, sorted by priority. */
     private void flushDiscardedBuffer() {
         if (discardedBuffer.isEmpty()) return;
-        System.out.println(getLocalName() + ": Enviando " + discardedBuffer.size()
-                + " mensajes filtrados al UI.");
+
+        System.out.println(getLocalName() + ": Ordenando " + discardedBuffer.size()
+                + " mensajes retenidos por prioridad antes de enviarlos...");
+
+        // === APLICACIÓN DE RANKED RETRIEVAL ===
+        // Ordenamos la lista evaluando cada mensaje. Los que tengan un 'score' más alto
+        // (más cercanos a ser importantes) irán primero. Los negativos (distracciones claras) al final.
+        discardedBuffer.sort((msg1, msg2) -> {
+            int score1 = engine.calculateScore(msg1);
+            int score2 = engine.calculateScore(msg2);
+
+            // Si hay empate en reglas, desempatamos usando la probabilidad del Naive Bayes
+            if (score1 == score2) {
+                boolean nb1 = engine.classifierSaysImportant(msg1);
+                boolean nb2 = engine.classifierSaysImportant(msg2);
+                if (nb1 && !nb2) return -1; // nb1 gana
+                if (!nb1 && nb2) return 1;  // nb2 gana
+            }
+
+            // Orden descendente (de mayor a menor puntuación)
+            return Integer.compare(score2, score1);
+        });
+        // ======================================
+
         try {
             DFAgentDescription[] results = dfSearch("visualizacion-chat");
             if (results.length > 0) {
@@ -302,6 +324,8 @@ public class FilterAgent extends Agent {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        // Vaciamos el buffer para la próxima vez
         discardedBuffer.clear();
     }
 

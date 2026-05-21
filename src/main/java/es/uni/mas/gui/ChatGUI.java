@@ -167,7 +167,7 @@ public class ChatGUI extends JFrame {
         SwingUtilities.invokeLater(() -> {
             if (messages == null || messages.isEmpty()) return;
             chatArea.append("\n══════════════════════════════════════════════════\n");
-            chatArea.append("  MENSAJES RETENIDOS DURANTE EL MODO ESTUDIO (" + messages.size() + ")\n");
+            chatArea.append("  MENSAJES RETENIDOS DURANTE EL MODO ESTUDIO POR PRIORIDAD (" + messages.size() + ")\n");
             chatArea.append("══════════════════════════════════════════════════\n");
             for (ChatMessage msg : messages) {
                 String time = sdf.format(new Date(msg.getTimestamp()));
