@@ -1,8 +1,10 @@
-# EstudioGuard 📚 - Proyecto de Sistemas Inteligentes
+# Focusly 📚 - Proyecto de Sistemas Inteligentes
 
 Somos un grupo de estudiantes de la UPM y este es nuestro proyecto para la asignatura de Sistemas Inteligentes. 
 
-Básicamente, nos hemos montado **FocusGuard**, un Sistema Multi-Agente (SMA) hecho con JADE. La idea es sencilla: cuando te pones a estudiar en serio, no quieres que te molesten con tonterías, pero tampoco quieres perderte un mensaje importante (tipo "ha cambiado la fecha del examen" o un aviso de tu madre). Así que este sistema hace de filtro simulando interceptar mensajes de chats como WhatsApp o Telegram.
+📺 **[Ver Presentación del Proyecto (Canva)](https://canva.link/hhuvh7viwqpmvnv)**
+
+Básicamente, nos hemos montado **Focusly**, un Sistema Multi-Agente (SMA) hecho con JADE. La idea es sencilla: cuando te pones a estudiar en serio, no quieres que te molesten con tonterías, pero tampoco quieres perderte un mensaje importante (tipo "ha cambiado la fecha del examen" o un aviso de tu madre). Así que este sistema hace de filtro simulando interceptar mensajes de chats como WhatsApp o Telegram.
 
 ---
 
