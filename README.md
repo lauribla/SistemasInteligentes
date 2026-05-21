@@ -1,82 +1,56 @@
-# EstudioGuard: Sistema Multi-Agente de Filtrado de Chats
+# EstudioGuard 📚 - Proyecto de Sistemas Inteligentes
 
-**[Enlace a la presentación](https://docs.google.com/presentation/d/1f-lpAHfSep0GDOSHzBrEc_pD0JfadFtAB0PhZXJVI2E/edit?usp=sharing)**  
-**Práctica de Sistemas Inteligentes**  
-**Implementación con JADE (Java Agent DEvelopment Framework)**
----
+Somos un grupo de estudiantes de la UPM y este es nuestro proyecto para la asignatura de Sistemas Inteligentes. 
 
-## 📝 Descripción del Proyecto
-
-**EstudioGuard** es un Sistema Multi-Agente (SMA) diseñado para mitigar las distracciones durante periodos de alta concentración. El sistema actúa como un interceptor inteligente de mensajes de chat (simulando aplicaciones como WhatsApp o Telegram), analizando el contenido y el remitente para decidir qué mensajes deben interrumpir al usuario y cuáles deben ser silenciados.
-
-El sistema se basa en un **Motor de Reglas Experto** alimentado por una base de conocimiento externa en **XML**, complementado por un **Clasificador Naive Bayes** entrenado a partir de esas mismas reglas, permitiendo filtrar tanto mensajes conocidos como mensajes nunca vistos. El clasificador se perfecciona en tiempo real mediante un mecanismo de **aprendizaje activo** que solicita retroalimentación al usuario cuando el sistema no tiene suficiente confianza.
+Básicamente, nos hemos montado **FocusGuard**, un Sistema Multi-Agente (SMA) hecho con JADE. La idea es sencilla: cuando te pones a estudiar en serio, no quieres que te molesten con tonterías, pero tampoco quieres perderte un mensaje importante (tipo "ha cambiado la fecha del examen" o un aviso de tu madre). Así que este sistema hace de filtro simulando interceptar mensajes de chats como WhatsApp o Telegram.
 
 ---
 
-## 🏗️ Arquitectura del Sistema
+## 🛠️ ¿Cómo está montado por dentro?
 
-El sistema sigue una arquitectura distribuida compuesta por 5 agentes principales coordinados bajo el estándar FIPA:
+Hemos dividido el curro en 5 agentes principales usando el estándar FIPA para que se comuniquen entre ellos:
 
-1.  **`ControllerAgent` (Orquestador):** El punto de entrada del sistema. Crea programáticamente a los demás agentes, gestiona el estado global (Modo Estudio ON/OFF) y asegura un apagado limpio (patrón Killer).
-2.  **`FilterAgent` (Motor de IA):** El núcleo inteligente. Implementado mediante una **Máquina de Estados Finitos (FSMBehaviour)** de 6 estados, combina el motor de reglas, el clasificador Naive Bayes y el gestor de contactos para tomar decisiones de filtrado. Durante el Modo Estudio almacena en buffer los mensajes descartados para mostrarlos al desactivar el modo.
-3.  **`ChatSimulatorAgent` (Percepción):** Simula el entorno externo. Genera tráfico de mensajes periódicamente mediante la creación de **agentes efímeros** (`MessageFetcherAgent`), aislando la lógica de adquisición.
-4.  **`UIAgent` (Interfaz):** Actúa como puente entre la plataforma JADE y la interfaz gráfica **Swing**, permitiendo al usuario visualizar mensajes filtrados, estadísticas en tiempo real y el banner de aprendizaje activo.
-5.  **`StatsAgent` (Monitorización):** Agente pasivo que recibe eventos de filtrado durante el Modo Estudio, acumula estadísticas por mensaje y remitente, y las envía periódicamente a la interfaz.
-
-### Diagrama de Flujo
-`Simulador` → *(ACL INFORM)* → `Filtro (IA)` → *(ACL INFORM)* → `UI (Visualización)`  
-`Filtro (IA)` → *(ACL INFORM)* → `Estadísticas` → *(ACL INFORM)* → `UI (Visualización)`  
-`Filtro (IA)` → *(ACL REQUEST)* → `UI` *(banner de aprendizaje)*  
-`UI` → *(ACL REQUEST)* → `Controlador` → *(ACL REQUEST)* → `Simulador / Filtro (Control)`
+1. **`ControllerAgent`**: Es el jefe. Arranca todo el chiringuito y controla si estamos en "Modo Estudio" o no. También se encarga de cerrar todo limpiamente cuando terminamos de ejecutar.
+2. **`FilterAgent`**: El cerebro de la operación. Aquí es donde está la IA de verdad. Usa una máquina de estados para ir leyendo los mensajes, mirar quién los manda y decidir si te interrumpe o se lo guarda para luego.
+3. **`ChatSimulatorAgent`**: Como no podíamos conectarnos al WhatsApp real para la práctica, este agente se inventa mensajes cada cierto tiempo para simular que nos están hablando.
+4. **`UIAgent`**: El que conecta todo el sistema de JADE con la interfaz gráfica que hicimos en Swing. Te muestra los mensajes, las estadísticas y te lanza las ventanitas para que la IA aprenda.
+5. **`StatsAgent`**: Se queda por ahí de fondo escuchando para ir guardando datos de cuántos mensajes nos llegan, de quién son, y pasarlo a la interfaz.
 
 ---
 
-## 🧠 Decisiones de Diseño y Justificación IA
+## 🧠 ¿Y la parte de "Inteligencia"?
 
-*   **Representación del Conocimiento (XML):** Se utiliza `rules.xml` para separar la lógica de negocio (reglas de importancia) del motor de inferencia. Esto permite que el sistema sea auditable y modificable por el usuario final sin tocar el código.
-*   **Razonamiento (Puntuación Ponderada):** En lugar de simples reglas booleanas, se usa un sistema de pesos que permite resolver conflictos (ej: un mensaje de un grupo ruidoso pero con una palabra clave urgente). Los pesos negativos permiten penalizar explícitamente mensajes de distracción.
-*   **Clasificador Naive Bayes:** Para generalizar más allá de las reglas explícitas, el sistema incluye un clasificador Naive Bayes entrenado automáticamente a partir de las keywords del XML. Actúa como desempate en casos borderline y aprende en tiempo real de la retroalimentación del usuario.
-*   **Aprendizaje Activo:** Cuando el sistema no tiene confianza en un mensaje (fuera del Modo Estudio), muestra un banner con cuenta atrás de 8 segundos. La respuesta del usuario amplía el vocabulario del clasificador para sesiones futuras, sin interrumpir el estudio.
-*   **FSMBehaviour:** El uso de una máquina de estados en el filtrado asegura una gestión eficiente de los hilos de ejecución y una lógica de estados (Espera → Análisis → Decisión → Aprendizaje) clara y profesional. Se usa `block()` en lugar de `blockingReceive()` para no bloquear el hilo del agente mientras se espera respuesta del usuario.
-*   **Gestión de Contactos:** Sistema de lista blanca/negra persistente que permite al usuario configurar automáticamente qué contactos siempre se permiten y cuáles se bloquean. La configuración se guarda en `contacts-config.json` para que persista entre diferentes ejecuciones.
-*   **Entorno Reproducible (Maven):** El proyecto usa Maven para gestionar la dependencia de JADE de forma local, asegurando que cualquier evaluador pueda ejecutar el código con un solo clic.
+No queríamos hacer un filtro cutre de cuatro palabras clave, así que le hemos metido varias cosas:
 
----
-## 🚀 Guía de Ejecución
-
-### Requisitos Previos
-*   **Java JDK 11** o superior.
-*   **Maven** instalado (opcional, IntelliJ lo gestiona solo).
-*   Archivo `jade.jar` ubicado en la carpeta `/lib` del proyecto.
-
-### Pasos en IntelliJ IDEA
-1.  **Importar:** Abre el proyecto y asegúrate de que IntelliJ reconozca el archivo `pom.xml`.
-2.  **Verificar recursos:** Asegúrate de que `rules.xml` está en `src/main/resources/`.
-3.  **Configurar Run:**
-    *   Main Class: `jade.Boot`
-    *   Program Arguments: `-gui agController:es.uni.mas.agents.ControllerAgent`
-4.  **Ejecutar:** Haz clic en Play. Se lanzará el GUI de JADE y la ventana de **EstudioGuard**.
-
-### Uso
-- Pulsa **"Activar MODO ESTUDIO"** para iniciar el filtrado. Solo llegarán los mensajes importantes.
-- El banner amarillo aparece cuando el sistema necesita ayuda para aprender (solo con el modo desactivado).
-- Pulsa **"Desactivar MODO ESTUDIO"** para ver los mensajes que fueron retenidos durante la sesión.
-- En cualquier momento, puedes pulsar el botón **"Configurar contactos"** para indicar qué contactos permitir y cuáles bloquear durante el modo Estudio.
----
-
-## 🤖 Declaración de Uso de IA
-
-De acuerdo con los requisitos de la asignatura, se declara que se ha utilizado Inteligencia Artificial Generativa (Antigravity AI) en las siguientes fases del proyecto:
-
-1.  **Concepción e Ideación:** La IA ayudó a pivotar desde ejemplos clásicos hacia la idea original del "Modo Estudio", validando la viabilidad de los requisitos técnicos frente a la propuesta.
-2.  **Arquitectura y Estructura:** Se utilizó la IA para diseñar el flujo de mensajes FIPA y proponer patrones avanzados como el *Agente Controlador* y el *Agente Efímero*.
-3.  **Resolución de Errores y Debugging:** La IA asistió en la depuración de las transiciones de la máquina de estados (FSM) y la configuración de las plantillas de mensajes (`MessageTemplate`) para evitar el robo de mensajes entre comportamientos.
-4.  **Documentación Técnica:** Apoyo en la redacción de la justificación de decisiones de diseño y en la elaboración del presente archivo de documentación.
-
-**Justificación:** El uso de la IA se ha centrado en acelerar la implementación de patrones estándar de JADE y en la estructuración profesional del proyecto, permitiendo que el desarrollo se centre en la lógica de inteligencia y en el cumplimiento estricto de los requisitos de la práctica.
+* **Reglas XML:** Tenemos un archivo `rules.xml` donde definimos qué palabras son importantes ("examen", "urgente") y cuáles no ("jajaja", "meme"). Le pusimos un sistema de puntos, así que si un mensaje tiene cosas de las dos, suma y resta los pesos para decidir qué hace.
+* **Clasificador Naive Bayes:** Para los mensajes raros que no encajan en las reglas. Se entrena solo con las palabras del XML y si le llega algo nuevo, intenta adivinar si es importante o no.
+* **Aprendizaje Activo:** Si el sistema recibe un mensaje y duda mucho de qué hacer (esto solo pasa si el modo estudio está apagado), te saca un aviso de 8 segundos pidiéndote ayuda. Según lo que le digas, aprende para no equivocarse la próxima vez.
+* **Gestión de Contactos:** Puedes hacer listas blancas y negras. Si pones a un colega muy pesado en la lista negra, no te llega nada suyo. Si pones a un profesor en la blanca, entra directo. Todo esto se guarda en un JSON (`contacts-config.json`) para no perderlo al cerrar la app.
 
 ---
 
-**Autores:** Mª Laura Hernández Hernández, Miguel Hurtado Rojas, Víctor Pérez García, Jonás Rodríguez Unanyan, Adrián Zazo Rubio  
+## 🚀 Cómo ejecutar esta maravilla
+
+Si quieres probarlo, necesitas tener Java 11 (o más) y el archivo `jade.jar` metido en la carpeta `lib` del proyecto. 
+
+Nosotros usamos IntelliJ, los pasos para arrancarlo son súper fáciles:
+1. Abres el proyecto (asegúrate de que coge bien el `pom.xml`).
+2. Abre la terminal del IDE y ejecuta `mvn clean install` para descargar todas las dependencias (o dale al botón de recargar de Maven).
+3. Configuras el *Run*:
+   * **Main Class**: `jade.Boot`
+   * **Program Arguments**: `-gui agController:es.uni.mas.agents.ControllerAgent`
+4. Le das al Play y a probar.
+
+**Para usarlo:**
+Dale al botón de **"Activar MODO ESTUDIO"**. Verás que de repente solo te entran los mensajes que la IA considera clave (los demás se quedan en la sombra). Si lo desactivas, te suelta de golpe todos los mensajes que te había estado ocultando (ideal para cuando haces un descanso). También puedes toquetear el botón de contactos para bloquear o permitir a quien quieras.
+
+---
+
+## 🤖 Uso de IA en el proyecto
+
+Principalmente se ha usado como herramienta de asistencia GPT 5.5 Thinking, sobre todo para depurar, como ayuda para estructurar el readme y ver qué cosas eran necesarias y para recordar la estructura de los archivos de Maven. 
+
+---
+**El equipo:** Mª Laura Hernández Hernández, Miguel Hurtado Rojas, Víctor Pérez García, Jonás Rodríguez Unanyan, Adrián Zazo Rubio  
 **Asignatura:** Sistemas Inteligentes  
-**Universidad:** Universidad Politécnica de Madrid
+**Universidad:** Universidad Politécnica de Madrid (UPM)
