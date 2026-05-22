@@ -290,35 +290,63 @@ public class FilterAgent extends Agent {
         if (discardedBuffer.isEmpty()) return;
 
         System.out.println(getLocalName() + ": Ordenando " + discardedBuffer.size()
-                + " mensajes retenidos por prioridad antes de enviarlos...");
+                + " mensajes retenidos usando TF-IDF (Vector Space Scoring)...");
 
-        // === APLICACIÓN DE RANKED RETRIEVAL ===
-        // Ordenamos la lista evaluando cada mensaje. Los que tengan un 'score' más alto
-        // (más cercanos a ser importantes) irán primero. Los negativos (distracciones claras) al final.
+        // === APLICACIÓN DE RANKED RETRIEVAL (Basado en IntroToIR.pdf) ===
+
+        // 1. Collection Statistics: Calcular la Frecuencia de Documento (DF) para cada término
+        java.util.Map<String, Double> idfMap = new java.util.HashMap<>();
+        int N = discardedBuffer.size(); // Número total de documentos en la colección
+
+        for (es.uni.mas.model.ChatMessage msg : discardedBuffer) {
+            // Extraer términos únicos del documento
+            java.util.Set<String> uniqueTerms = new java.util.HashSet<>(
+                    java.util.Arrays.asList(msg.getText().toLowerCase().split("\\W+"))
+            );
+            for (String term : uniqueTerms) {
+                if (term.length() > 2) { // Ignorar palabras muy cortas
+                    idfMap.put(term, idfMap.getOrDefault(term, 0.0) + 1.0);
+                }
+            }
+        }
+
+        // 2. Weighting Scheme: Calcular el IDF (Frecuencia Inversa de Documento) -> log10(N/df)
+        for (String term : idfMap.keySet()) {
+            double df = idfMap.get(term);
+            idfMap.put(term, Math.log10(N / df));
+        }
+
+        // 3. Ordenamos la lista evaluando el peso TF-IDF de cada mensaje
         discardedBuffer.sort((msg1, msg2) -> {
-            int score1 = engine.calculateScore(msg1);
-            int score2 = engine.calculateScore(msg2);
 
-            // Si hay empate en reglas, desempatamos usando la probabilidad del Naive Bayes
-            if (score1 == score2) {
+            // Calculamos el peso vectorial TF-IDF de cada documento
+            double tfIdfScore1 = calculateTFIDF(msg1.getText(), idfMap);
+            double tfIdfScore2 = calculateTFIDF(msg2.getText(), idfMap);
+
+            // Sumamos la heurística de las reglas como base (Híbrido Simbólico + Vectorial)
+            double finalScore1 = tfIdfScore1 + engine.calculateScore(msg1);
+            double finalScore2 = tfIdfScore2 + engine.calculateScore(msg2);
+
+            // Si hay empate estricto, desempatamos usando Naive Bayes
+            if (finalScore1 == finalScore2) {
                 boolean nb1 = engine.classifierSaysImportant(msg1);
                 boolean nb2 = engine.classifierSaysImportant(msg2);
-                if (nb1 && !nb2) return -1; // nb1 gana
-                if (!nb1 && nb2) return 1;  // nb2 gana
+                if (nb1 && !nb2) return -1;
+                if (!nb1 && nb2) return 1;
             }
 
-            // Orden descendente (de mayor a menor puntuación)
-            return Integer.compare(score2, score1);
+            // Orden descendente (de mayor a menor relevancia)
+            return Double.compare(finalScore2, finalScore1);
         });
         // ======================================
 
         try {
-            DFAgentDescription[] results = dfSearch("visualizacion-chat");
+            jade.domain.FIPAAgentManagement.DFAgentDescription[] results = dfSearch("visualizacion-chat");
             if (results.length > 0) {
-                ACLMessage batch = new ACLMessage(ACLMessage.INFORM);
+                jade.lang.acl.ACLMessage batch = new jade.lang.acl.ACLMessage(jade.lang.acl.ACLMessage.INFORM);
                 batch.addReceiver(results[0].getName());
                 batch.setOntology("discarded-batch");
-                batch.setContentObject(new ArrayList<>(discardedBuffer));
+                batch.setContentObject(new java.util.ArrayList<>(discardedBuffer));
                 send(batch);
             }
         } catch (Exception e) {
@@ -327,6 +355,38 @@ public class FilterAgent extends Agent {
 
         // Vaciamos el buffer para la próxima vez
         discardedBuffer.clear();
+    }
+
+    /**
+     * Calcula el peso TF-IDF de un documento basándose en las fórmulas de Recuperación de Información.
+     */
+    private double calculateTFIDF(String text, java.util.Map<String, Double> idfMap) {
+        String[] terms = text.toLowerCase().split("\\W+");
+        java.util.Map<String, Integer> tfMap = new java.util.HashMap<>();
+
+        // Calcular Frecuencia del Término (TF) en el documento
+        for (String term : terms) {
+            if (term.length() > 2) {
+                tfMap.put(term, tfMap.getOrDefault(term, 0) + 1);
+            }
+        }
+
+        double docScore = 0.0;
+        for (java.util.Map.Entry<String, Integer> entry : tfMap.entrySet()) {
+            String term = entry.getKey();
+            int tf = entry.getValue();
+
+            // Esquema de peso logarítmico para TF: 1 + log10(tf)
+            double tfWeight = 1.0 + Math.log10(tf);
+
+            // Obtener el IDF calculado previamente para la colección
+            double idfWeight = idfMap.getOrDefault(term, 0.0);
+
+            // Peso final del término en el documento = TF * IDF
+            docScore += (tfWeight * idfWeight);
+        }
+
+        return docScore;
     }
 
     private void sendClassifyRequest() {

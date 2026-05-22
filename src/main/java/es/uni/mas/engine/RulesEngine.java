@@ -12,9 +12,16 @@ public class RulesEngine {
     private List<Rule> rules;
     private NaiveBayesClassifier classifier;
 
+    // --- NUEVO: Instancia del Analizador de Sentimientos ---
+    private LocalSentimentAnalyzer sentimentAnalyzer;
+
     public RulesEngine(String rulesFile) {
         this.rules      = new ArrayList<>();
         this.classifier = new NaiveBayesClassifier();
+
+        // --- NUEVO: Inicializar el analizador local ---
+        this.sentimentAnalyzer = new LocalSentimentAnalyzer();
+
         loadRules(rulesFile);
     }
 
@@ -64,12 +71,13 @@ public class RulesEngine {
         }
     }
 
-    // Rule-based scoring
+    // Rule-based scoring with Sentiment Analysis Modifiers
     public int calculateScore(ChatMessage message) {
         int    score  = 0;
         String text   = message.getText().toLowerCase();
         String sender = message.getSender();
 
+        // 1. Puntuación base (Reglas XML)
         for (Rule rule : rules) {
             if (rule.type.equals("sender") && rule.value.equalsIgnoreCase(sender)) {
                 score += rule.weight;
@@ -77,6 +85,21 @@ public class RulesEngine {
                 score += rule.weight;
             }
         }
+
+        // 2. --- NUEVO: Modificador por Análisis de Sentimiento Local ---
+        LocalSentimentAnalyzer.SentimentResult sentiment = sentimentAnalyzer.analyzeText(message.getText());
+
+        // Regla de Emergencia: Si es muy negativo y con fuerza, podría ser una urgencia real
+        if (sentiment.score < -0.5 && sentiment.magnitude >= 1.0) {
+            System.out.println("RulesEngine: ⚠️ Alerta emocional negativa (Posible urgencia). Score Sentimiento: " + sentiment.score);
+            score += 25; // Prioridad altísima para que pase el filtro o se ponga arriba
+        }
+        // Regla de Euforia: Si es extremadamente positivo, suele ser distracción (broma, fiesta)
+        else if (sentiment.score > 0.5 && sentiment.magnitude >= 1.0) {
+            System.out.println("RulesEngine: 🎉 Alerta de euforia (Posible distracción). Score Sentimiento: " + sentiment.score);
+            score -= 10; // Penalización en modo estudio para que baje su prioridad
+        }
+
         return score;
     }
 
@@ -105,8 +128,19 @@ public class RulesEngine {
         return classifier.extractMeaningfulWords(text);
     }
 
-    public int     getThreshold()              { return threshold; }
-    public boolean isImportant(ChatMessage m)  { return calculateScore(m) >= threshold; }
+    public int getThreshold() {
+        return threshold;
+    }
+
+    // --- NUEVO: Metodo para poder modificar el umbral desde un Slider (Curva ROC) ---
+    public void setThreshold(int newThreshold) {
+        this.threshold = newThreshold;
+        System.out.println("RulesEngine: Nuevo umbral de sensibilidad establecido a " + this.threshold);
+    }
+
+    public boolean isImportant(ChatMessage m) {
+        return calculateScore(m) >= threshold;
+    }
 
     private static class Rule {
         final String type;
