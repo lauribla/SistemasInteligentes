@@ -32,7 +32,7 @@ No queríamos hacer un filtro cutre de cuatro palabras clave, así que le hemos 
 
 ---
 
-## 🚀 Cómo ejecutar esta maravilla
+## 🚀 Cómo ejecutarlo
 
 Si quieres probarlo, necesitas tener Java 11 (o más) y el archivo `jade.jar` metido en la carpeta `lib` del proyecto. 
 
