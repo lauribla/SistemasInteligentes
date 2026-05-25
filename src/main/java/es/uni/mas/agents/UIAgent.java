@@ -53,6 +53,10 @@ public class UIAgent extends Agent {
                             e.printStackTrace();
                         }
 
+                    } else if ("study-timer-ended".equals(ontology)) {
+                        // Timer notification - just log it
+                        System.out.println("UIAgent: Timer de modo estudio finalizado - " + msg.getContent());
+
                     } else {
                         // Normal approved message
                         try {
