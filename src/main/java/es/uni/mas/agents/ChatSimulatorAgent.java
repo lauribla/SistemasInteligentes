@@ -19,7 +19,7 @@ public class ChatSimulatorAgent extends Agent {
         // Arrancamos la simulación automáticamente
         startSimulation();
 
-        // Ya no necesitamos escuchar START/STOP para detener el tráfico, 
+        // Ya no necesitamos escuchar START/STOP para detener el tráfico,
         // pero mantenemos el comportamiento por si queremos ampliarlo.
         addBehaviour(new CyclicBehaviour() {
             @Override

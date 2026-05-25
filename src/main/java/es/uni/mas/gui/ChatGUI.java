@@ -472,7 +472,7 @@ public class ChatGUI extends JFrame {
         controlPanel.revalidate();
         controlPanel.repaint();
 
-        startCountdown(25 *60, true);
+        startCountdown(25 , true);
     }
 
     private void startCountdown(int seconds, boolean isStudyPhase) {
@@ -492,7 +492,7 @@ public class ChatGUI extends JFrame {
                     cp.add(timerLabel);
                     cp.revalidate();
 
-                    startCountdown(5 *60, false);
+                    startCountdown(5 , false);
                     myAgent.sendControlCommand("STOP");
                 } else {
                     myAgent.sendControlCommand("START");
