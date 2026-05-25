@@ -159,7 +159,12 @@ public class MessageFetcherAgent extends Agent {
             {"GrupoUni", "¿Alguien se apunta a hacer un grupo de estudio para el examen de sistemas?"},
             {"GrupoFamilia", "Tu padre ha hecho una tarta de manzana, está buenísima, pásate por casa a probarla"},
             {"Desconocido", "¿Quieres aprender a programar? Únete a nuestro curso online gratuito"},
-            {"Notificaciones_App", "[Spotify] Nueva playlist personalizada basada en tu actividad reciente"}
+            {"Notificaciones_App", "[Spotify] Nueva playlist personalizada basada en tu actividad reciente"},
+            {"AmigoCercano", "¡¡¡ME ACABAN DE ATROPELLAR, AYUDA!!!"},
+            {"GrupoFamilia", "¡¡¡HIJO VEN CORRIENDO A CASA, HAY UN INCENDIO!!!"},
+            {"AmigoCercano", "Estoy en el hospital"},
+
+
     };
 
     @Override

@@ -16,7 +16,7 @@ Hemos dividido el curro en 5 agentes principales usando el estándar FIPA para q
 2. **`FilterAgent`**: El cerebro de la operación. Aquí es donde está la IA de verdad. Usa una máquina de estados para ir leyendo los mensajes, mirar quién los manda y decidir si te interrumpe o se lo guarda para luego.
 3. **`ChatSimulatorAgent`**: Como no podíamos conectarnos al WhatsApp real para la práctica, este agente se inventa mensajes cada cierto tiempo para simular que nos están hablando.
 4. **`UIAgent`**: El que conecta todo el sistema de JADE con la interfaz gráfica que hicimos en Swing. Te muestra los mensajes, las estadísticas y te lanza las ventanitas para que la IA aprenda.
-5. **`StatsAgent`**: Se queda por ahí de fondo escuchando para ir guardando datos de cuántos mensajes nos llegan, de quién son, y pasarlo a la interfaz.
+5. **`StatsAgent`**: Se queda por ahí de fondo escuchando las decisiones del sistema para ir guardando datos y calculando métricas reales de Recuperación de Información en tiempo real: Precisión, Recall y F1-Score. Todo esto lo manda directamente a la interfaz.
 
 ---
 
@@ -24,8 +24,9 @@ Hemos dividido el curro en 5 agentes principales usando el estándar FIPA para q
 
 No queríamos hacer un filtro cutre de cuatro palabras clave, así que le hemos metido varias cosas:
 
-* **Reglas XML:** Tenemos un archivo `rules.xml` donde definimos qué palabras son importantes ("examen", "urgente") y cuáles no ("jajaja", "meme"). Le pusimos un sistema de puntos, así que si un mensaje tiene cosas de las dos, suma y resta los pesos para decidir qué hace.
-* **Clasificador Naive Bayes:** Para los mensajes raros que no encajan en las reglas. Se entrena solo con las palabras del XML y si le llega algo nuevo, intenta adivinar si es importante o no.
+* **Scoring Híbrido (Reglas XML + Sentimiento):** Por un lado, tenemos un rules.xml donde definimos contextos importantes ("examen", "cálculo") y distracciones. Por otro, hemos programado un Analizador de Sentimientos Léxico 100% local (nada de APIs en la nube, para proteger la privacidad de los chats). Si un mensaje detecta intensidad emocional negativa (ej. "¡Ayuda, hospital!"), el sistema le sube la prioridad al máximo por ser una emergencia. Si detecta euforia fiestera, lo hunde en la lista.
+* **Recuperación Ranqueada:** Cuando apagas el Modo Estudio, no te escupimos los mensajes ocultos en orden cronológico (eso genera confusión y acabas leyendo memes antes que urgencias). Hemos implementado un modelo de Recuperación de Información con TF-IDF y amortiguación logarítmica. El sistema analiza los mensajes retenidos, detecta qué palabras son matemáticamente más raras e informativas, y te ordena el cajón de mensajes por prioridad real.
+* **Clasificador Naive Bayes:** Para los mensajes raros que no encajan en las reglas. Se entrena solo con las palabras del XML y si le llega algo nuevo, intenta adivinar si es importante o no. Además, sirve como juez de desempate si dos mensajes obtienen exactamente la misma puntuación en el Scoring Híbrido.
 * **Aprendizaje Activo:** Si el sistema recibe un mensaje y duda mucho de qué hacer (esto solo pasa si el modo estudio está apagado), te saca un aviso de 8 segundos pidiéndote ayuda. Según lo que le digas, aprende para no equivocarse la próxima vez.
 * **Gestión de Contactos:** Puedes hacer listas blancas y negras. Si pones a un colega muy pesado en la lista negra, no te llega nada suyo. Si pones a un profesor en la blanca, entra directo. Todo esto se guarda en un JSON (`contacts-config.json`) para no perderlo al cerrar la app.
 
